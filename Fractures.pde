@@ -1,9 +1,12 @@
 import processing.pdf.*;
+import java.util.Comparator;
+import java.util.Collections;
 
 int pad = 100;
 int W = 800-2*pad;
 int H = 800-2*pad;
-int NUM_POINTS = 1000;
+
+int NUM_POINTS = 5000;
 
 PGraphics pg;
 ArrayList<Line> lines = new ArrayList<Line>();
@@ -45,7 +48,8 @@ void setup(){
 
     lines.get(lines.size()-1).build();
     while(lines.size() < NUM_POINTS){
-        println(lines.size());
+        if(lines.size()%500 == 0)
+            println(lines.size());
         trigger();
     }
 }
@@ -73,8 +77,15 @@ float power(float p, float g) {
 }
 
 void trigger(){
-
     Line line = lines.get(0);
+
+    /*
+    Collections.sort(lines, new CustomComparator());
+    int choose = int(floor(lines.size()*pow(random(1), 2)));
+
+    line = lines.get(choose);
+    */
+
     if(random(1) < 0.8){
         int max_points = -1;
         line = lines.get(0);
@@ -127,6 +138,7 @@ class Line{
     int ind;
     PVector v1;
     PVector v12;
+    float val = 0;
     int points_size = 0;
 
     Line(int ind, PVector v1, PVector v12){
@@ -140,7 +152,7 @@ class Line{
         else
             this.v12.rotate(-PI/2);
 
-        this.v12.rotate(radians(random(-1, 1)));
+        this.v12.rotate(radians(random(-45, 45)));
     }
 
     Line(int ind, PVector v1, PVector v12, boolean zas){
@@ -171,14 +183,18 @@ class Line{
             }
             points.add(next.get());
 
-            float amp = 3;
-            float ang = amp * (-0.5 + power(noise(this.ind, points.size()*0.2), 2));
-            dir.rotate(radians(ang));
+            PVector perp = dir.get().rotate(PI/2);
+            perp.mult(0.06);
+            float amp = 2 * (-0.5 + power(noise(this.ind, this.points.size()*0.3), 2));
+            perp.mult(amp);
+            dir.add(perp);
         }
         this.mask();
         //points.remove(points.size()-1);
         this.points_size = points.size();
-
+        PVector bpoint = points.get(points.size()/2);
+        //this.val = dist(bpoint.x, bpoint.y, W/2, H/2) / dist(0, 0, W/2, H/2);
+        this.val = bpoint.y/H;
     }
 
     void show(){
@@ -210,5 +226,14 @@ class Line{
         }
         pg.endShape();
         pg.endDraw();
+    }
+}
+
+public class CustomComparator implements Comparator<Line> {
+    @Override
+    public int compare(Line o1, Line o2) {
+        if(o1.val > o2.val)
+            return 1;
+        return 2;
     }
 }
