@@ -3,17 +3,24 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 
-int pad = 100;
-int W = 800-2*pad;
-int H = 800-2*pad;
+float sca = 2;
 
-int NUM_POINTS = 24000;
+int mmx = int(297*sca);
+int mmy = int(420*sca);
+
+int mrx = int(40*sca);
+int mry = int(40*sca);
+
+int W = mmx-2*mrx;
+int H = mmy-2*mry;
+
+int NUM_LINES = 20000;
 
 PGraphics pg;
 List<Line> lines = new ArrayList<Line>();
 
 void settings(){
-    size(W + 2*pad, H + 2*pad, P2D);
+    size(W + 2*mrx, H + 2*mry, P2D);
 }
 
 void setup(){
@@ -23,47 +30,23 @@ void setup(){
     pg.endDraw();
     noLoop();
 
-    Line l = null;
-    int rand = floor(random(4));
-    if(rand == 0){
-        PVector v12 = new PVector(0, 1);
-        v12.rotate(radians(random(-45, +45)));
-        l = new Line(0, new PVector(random(W)-1, 0), v12, true);
-    }
-    if(rand == 1){
-        PVector v12 = new PVector(0, -1);
-        v12.rotate(radians(random(-45, +45)));
-        l = new Line(0, new PVector(random(W)-1, H-1), v12, true);
-    }
-    if(rand == 2){
-        PVector v12 = new PVector(1, 0);
-        v12.rotate(radians(random(-45, +45)));
-        l = new Line(0, new PVector(0, random(H)-1), v12, true);
-    }
-    if(rand == 3){
-        PVector v12 = new PVector(-1, 0);
-        v12.rotate(radians(random(-45, +45)));
-        l = new Line(0, new PVector(W-1, random(H)-1), v12, true);
-    }
-    lines.add(l);
-
-    lines.get(lines.size()-1).build();
-    while(lines.size() < NUM_POINTS){
-        println(lines.size());
-        trigger();
+    while(lines.size() < NUM_LINES){
+        if(lines.size() % 500 == 0)
+            println(lines.size());
+        create_line();
     }
 }
 
 void draw(){
     background(240);
     beginRecord(PDF, "vector/vec.pdf");
-    translate(pad, pad);
+    translate(mrx, mry);
 
     for(Line l : lines){
         l.show();
     }
     
-    println("**", lines.size());
+    println("[", lines.size(), "]");
 
     //rect(0, 0, W, H);
     endRecord();
@@ -78,81 +61,41 @@ float power(float p, float g) {
         return 1 - 0.5 * pow(2*(1 - p), g);
 }
 
-void trigger(){
-    Line line = lines.get(0);
 
-    /*
-    float chosen_prob = H * pow(random(1), 4);
-    float min_dist = 100000000;
-    for(Line l : lines){
-        PVector rp1 = l.points.get(0);
-        PVector rp2 = l.points.get(l.points.size()/2);
-        PVector rp3 = l.points.get(l.points.size()-1);
-        float the_dist = (abs(rp1.y - chosen_prob))/1;
-        if(the_dist < min_dist){
-            line = l;
-            min_dist = the_dist;
-        }
-    }
+PVector get_root(){
+    float ang = random(2*PI);
+    float r = map(power(random(1), 1./6), 0, 1, 0, H);
+    float vx = W/2 + r * cos(ang);
+    float vy = H/2 + r * sin(ang);
+    // float vx = random(W);
+    // float vy = random(H);
+    PVector v1 = new PVector(vx, vy);
 
-    Collections.sort(lines, new CustomComparator());
-    int choose = int(floor(lines.size()*pow(random(1), 2)));
-    choose = 0;
-    if(lines.size() > 10){
-        choose = floor(random(10));
-    }
-    line = lines.get(choose);
-    */
+    return v1;
+}
 
-    int the_ind = -1;
-    if(random(1) < 1.0){
-        int max_points = -1;
-        line = lines.get(0);
-        the_ind = 0;
-        for(int k = 0; k < lines.size(); k++){
-            Line l = lines.get(k);
-            if(l.points_size > max_points){
-                max_points = l.points_size;
-                line = l;
-            }
-            the_ind = k;
-        }
-    }else{
-        int randind = floor(random(lines.size()));
-        line = lines.get(randind);
-        the_ind = randind;
-        int counter = 0;
-        while(line.points_size < 20 && counter++ < 100){
-            randind = floor(random(lines.size()));
-            line = lines.get(randind);
-            the_ind = randind;
-        }
-    }
 
-    int num_points = line.points.size();
-    int rand_ind   = int(num_points*random(0.3, 0.7));
-    int rand_ind_n = rand_ind + 1;
+PVector get_dir(){
+    PVector dir = PVector.random2D();
+    dir = new PVector(0, 1);
+    dir.rotate(radians(random(360)));
 
-    try{
-        PVector v1 = line.points.get(rand_ind);
-        PVector v2 = line.points.get(rand_ind_n);
-        
-        ////
-        line.points_size /= 2;
-        //Line lp1 = new Line(lines.size()+1, line.points.subList(0, rand_ind));
-        //Line lp2 = new Line(lines.size()+2, line.points.subList(rand_ind, line.points.size()));
-        //lines.remove(the_ind);
-        //lines.add(lp1);
-        //lines.add(lp2);
+    return dir;
+}
 
-        int ind = lines.size();
-        Line new_line = new Line(ind, v1, PVector.sub(v2, v1));
-        lines.add(new_line);
-        new_line.build();
-    }
-    catch(IndexOutOfBoundsException e){
 
-    }
+void create_line(){
+    
+    PVector v1  = get_root();
+    PVector dir = get_dir();
+
+    int ind = lines.size();
+    Line new_line = new Line(ind, v1, dir, true);
+    lines.add(new_line);
+    new_line.build();
+    Collections.reverse(new_line.points);
+    new_line.v12.rotate(PI);
+    new_line.build();
 }
 
 boolean isblack(PVector v){
@@ -232,6 +175,7 @@ class Line{
             if (random(100) > 100){
                 amp = random(1);
             }
+
             perp.mult(amp);
             dir.add(perp);
         }
@@ -243,7 +187,7 @@ class Line{
     }
 
     void show(){
-        if(points.size() < 5){
+        if(points.size() < 10){
             return;
         }
         noFill();
@@ -262,7 +206,7 @@ class Line{
         pg.beginDraw();
         pg.noFill();
         pg.stroke(20);
-        pg.strokeWeight(1.9);
+        pg.strokeWeight(2.2);
         pg.beginShape();
         for(int k = 0; k < points.size(); k++){
             float x = points.get(k).x;
